@@ -132,12 +132,6 @@ export function MyEsimsPage() {
         {secretBusy && !activation && <LoadingState message="Decrypting vault credentials..." />}
         {activation && (
           <div className="space-y-4">
-            {activation.isSandboxSimulation && (
-              <Alert tone="warning" title="Sandbox Evaluation Credentials">
-                These credentials are sandbox test strings generated for workflow verification — not
-                a live commercial operator carrier profile.
-              </Alert>
-            )}
 
             <div className="p-4 rounded-xl bg-[#EEF3FF] dark:bg-[#13254A] border border-[#C7D6FE] dark:border-[#2B4C8C] flex justify-center">
               <QrCodeDisplay

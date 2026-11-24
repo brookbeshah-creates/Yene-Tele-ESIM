@@ -6,7 +6,7 @@ interface AnimatedAtmosphereProps {
   className?: string;
 }
 
-type SimTone = 'green' | 'blue' | 'yellow';
+type SimTone = 'green' | 'blue' | 'yellow' | 'red';
 
 interface FloatingSimCard {
   x: number;
@@ -37,6 +37,11 @@ const SIM_PALETTE_LIGHT: Record<SimTone, { fill: string; stroke: string; chip: s
     stroke: '234, 179, 8', // #EAB308 Google yellow
     chip: '202, 138, 4',
   },
+  red: {
+    fill: '254, 226, 226', // #FEE2E2 light red
+    stroke: '234, 67, 53', // #EA4335 Google red
+    chip: '220, 38, 38',
+  },
 };
 
 const SIM_PALETTE_DARK: Record<SimTone, { fill: string; stroke: string; chip: string }> = {
@@ -54,6 +59,11 @@ const SIM_PALETTE_DARK: Record<SimTone, { fill: string; stroke: string; chip: st
     fill: '113, 63, 18',
     stroke: '253, 224, 71', // #FDE047
     chip: '253, 224, 71',
+  },
+  red: {
+    fill: '127, 29, 29',
+    stroke: '252, 165, 165', // #FCA5A5
+    chip: '252, 165, 165',
   },
 };
 
@@ -149,7 +159,7 @@ export function AnimatedAtmosphere({
     let dpr = 1;
     let cards: FloatingSimCard[] = [];
     const isDark = resolvedTheme === 'dark';
-    const tones: SimTone[] = ['green', 'blue', 'yellow'];
+    const tones: SimTone[] = ['green', 'blue', 'yellow', 'red'];
 
     const initCards = () => {
       const isCompact = width < 768;

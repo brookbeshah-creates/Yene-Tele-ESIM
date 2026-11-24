@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ArrowLeft,
   ArrowRight,
@@ -30,13 +30,15 @@ import { Alert } from '../../components/ui/Alert';
 import { Button } from '../../components/ui/Button';
 import { Card, CardHeader } from '../../components/ui/Card';
 import { Input } from '../../components/ui/Input';
+import { LoadingState } from '../../components/ui/States';
 import { StatusBadge } from '../../components/ui/StatusBadge';
+import { GoogleSignInButton } from '../../components/yegna/GoogleSignInButton';
 import { OPERATOR_LOGO_MAP } from '../../components/yegna/OperatorLogoTiles';
 import { QrCodeDisplay } from '../../components/yegna/QrCodeDisplay';
 
 const STEP_META = [
-  { num: 1, short: 'Plan', title: 'Operator & Service' },
-  { num: 2, short: 'Device', title: 'Device Check' },
+  { num: 1, short: 'Operator', title: 'Choose Operator & Plan' },
+  { num: 2, short: 'Device', title: 'Device Compatibility' },
   { num: 3, short: 'Fayda', title: 'Fayda KYC' },
   { num: 4, short: 'Number', title: 'Mobile Number' },
   { num: 5, short: 'Pay', title: 'Review & Pay' },
@@ -44,7 +46,7 @@ const STEP_META = [
 ];
 
 export function BuyEsimPage() {
-  const { firebaseUser } = useAuth();
+  const { firebaseUser, loading: authLoading, signInWithGoogle, authError, clearAuthError } = useAuth();
   const { navigate, search } = useRouter();
 
   const requestedOperator = useMemo(() => {
@@ -56,6 +58,9 @@ export function BuyEsimPage() {
   const [products, setProducts] = useState<EsimProductRecord[]>([]);
   const [devices, setDevices] = useState<DeviceCompatibilityRecord[]>([]);
   const [numbers, setNumbers] = useState<PublicNumberOption[]>([]);
+  const [catalogLoading, setCatalogLoading] = useState(true);
+  const [catalogError, setCatalogError] = useState<string | null>(null);
+  const [numbersLoading, setNumbersLoading] = useState(false);
 
   const [step, setStep] = useState<number>(1);
   const [selectedOperator, setSelectedOperator] = useState<OperatorCode>(
@@ -90,6 +95,7 @@ export function BuyEsimPage() {
   const [provisionedEsim, setProvisionedEsim] = useState<CustomerEsimRecord | null>(null);
   const [activation, setActivation] = useState<EsimActivationSecretView | null>(null);
 
+  const [authBusy, setAuthBusy] = useState(false);
   const [busy, setBusy] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [copiedField, setCopiedField] = useState<string | null>(null);
@@ -100,7 +106,9 @@ export function BuyEsimPage() {
     }
   }, [requestedOperator]);
 
-  useEffect(() => {
+  const loadCatalog = useCallback(() => {
+    setCatalogLoading(true);
+    setCatalogError(null);
     Promise.all([
       apiRequest<{ operators: OperatorConfigRecord[] }>('/api/v1/operators', { requireAuth: false }),
       apiRequest<{ products: EsimProductRecord[] }>('/api/v1/products', { requireAuth: false }),
@@ -121,14 +129,28 @@ export function BuyEsimPage() {
           if (firstEnabled) setSelectedOperator(firstEnabled.operatorCode);
         }
       })
-      .catch(() => {});
+      .catch((err) => {
+        setCatalogError(
+          err instanceof Error
+            ? err.message
+            : 'Unable to load operators and services. Please retry.',
+        );
+      })
+      .finally(() => {
+        setCatalogLoading(false);
+      });
   }, [requestedOperator]);
+
+  useEffect(() => {
+    loadCatalog();
+  }, [loadCatalog]);
 
   useEffect(() => {
     const params = new URLSearchParams({ operator: selectedOperator });
     if (numberSearch.trim()) params.set('q', numberSearch.trim());
     if (tierFilter !== 'all') params.set('tier', tierFilter);
 
+    setNumbersLoading(true);
     apiRequest<{ numbers: PublicNumberOption[] }>(
       `/api/v1/numbers/available?${params.toString()}`,
       { requireAuth: false },
@@ -142,6 +164,9 @@ export function BuyEsimPage() {
         setNumbers([]);
         setSelectedStockId(null);
         setSelectedDirectMsisdn(null);
+      })
+      .finally(() => {
+        setNumbersLoading(false);
       });
   }, [selectedOperator, numberSearch, tierFilter]);
 
@@ -173,10 +198,21 @@ export function BuyEsimPage() {
     setTimeout(() => setCopiedField(null), 1800);
   };
 
+  const handleGoogleSignInBeforeForm = async () => {
+    clearAuthError();
+    setAuthBusy(true);
+    try {
+      await signInWithGoogle();
+    } catch {
+      // handled in AuthContext
+    } finally {
+      setAuthBusy(false);
+    }
+  };
+
   const handleStartDraftAndProceed = async () => {
     setErrorMsg(null);
     if (!firebaseUser) {
-      navigate('/login');
       return;
     }
     setBusy(true);
@@ -330,6 +366,78 @@ export function BuyEsimPage() {
     }
   };
 
+  if (authLoading) {
+    return (
+      <div className="max-w-lg mx-auto px-4 py-12">
+        <LoadingState message="Checking your Google session..." />
+      </div>
+    );
+  }
+
+  // Gate: User MUST sign in with Google BEFORE starting the Buy eSIM form
+  if (!firebaseUser) {
+    const emailRedirect = `/login?redirect=${encodeURIComponent(`/buy-esim${search}`)}`;
+    return (
+      <div className="max-w-md mx-auto px-3 sm:px-6 py-8 sm:py-14">
+        <Card padding="none" className="overflow-hidden rounded-3xl border-[#DADCE0] dark:border-[#24344D]">
+          <div className="h-1.5 w-full bg-gradient-to-r from-[#4285F4] via-[#EA4335] via-[#FBBC05] to-[#34A853]" />
+          <div className="p-6 sm:p-8 space-y-5">
+            <div className="flex flex-col items-center text-center space-y-2.5">
+              <div className="h-12 px-3 rounded-2xl bg-white border border-[#DADCE0] flex items-center justify-center shadow-xs">
+                <img
+                  src="/assets/aistudio/image_28c3daa0.png"
+                  alt="Yene Tele"
+                  className="h-8 w-auto object-contain"
+                />
+              </div>
+              <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-[#111827] dark:text-[#F8FAFC]">
+                Sign in with Google to buy eSIM
+              </h1>
+              <p className="text-xs sm:text-sm text-[#5F6368] dark:text-[#CBD5E1] leading-relaxed">
+                Sign in first so your order, Fayda verification, and eSIM QR code stay linked safely
+                to your account.
+              </p>
+            </div>
+
+            {requestedOperator && (
+              <div className="rounded-2xl bg-[#F8FAFD] dark:bg-[#111C2E] border border-[#DADCE0] dark:border-[#24344D] p-3 flex items-center justify-center gap-3">
+                <span className="inline-flex h-8 w-16 items-center justify-center rounded-lg bg-white border border-[#DADCE0] px-1.5 py-1 shrink-0">
+                  <img
+                    src={OPERATOR_LOGO_MAP[requestedOperator].src}
+                    alt={OPERATOR_LOGO_MAP[requestedOperator].alt}
+                    className="h-full w-full object-contain"
+                  />
+                </span>
+                <span className="text-xs font-semibold text-[#111827] dark:text-[#F8FAFC]">
+                  Selected:{' '}
+                  {requestedOperator === 'ethio_telecom' ? 'Ethio telecom' : 'Safaricom Ethiopia'}
+                </span>
+              </div>
+            )}
+
+            {authError && <Alert tone="error">{authError}</Alert>}
+
+            <div className="space-y-3 pt-1">
+              <GoogleSignInButton
+                loading={authBusy}
+                label="Continue with Google"
+                onClick={handleGoogleSignInBeforeForm}
+              />
+
+              <button
+                type="button"
+                onClick={() => navigate(emailRedirect)}
+                className="w-full min-h-[42px] text-xs font-semibold text-[#1A73E8] dark:text-[#60A5FA] hover:underline cursor-pointer"
+              >
+                Or sign in with email &amp; password
+              </button>
+            </div>
+          </div>
+        </Card>
+      </div>
+    );
+  }
+
   const currentStepMeta = STEP_META[step - 1] ?? STEP_META[0];
   const selectedNumberPreview =
     activeOperatorCfg?.numberAvailabilityMode === 'stock_pool'
@@ -337,53 +445,55 @@ export function BuyEsimPage() {
       : selectedDirectMsisdn;
 
   return (
-    <div className="max-w-3xl mx-auto px-3 sm:px-6 py-4 sm:py-7 space-y-4">
-      {/* Compact Mobile-First Web App Header & Segmented Progress */}
-      <div className="rounded-xl border border-[#E5E7EB] dark:border-[#24344D] bg-white dark:bg-[#162338] p-3.5 sm:p-4 shadow-[var(--yegna-shadow-card)] space-y-3">
-        <div className="flex items-center justify-between gap-2">
-          <div className="min-w-0">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-[#0A2DB8] dark:text-[#60A5FA]">
-              eSIM Activation App
-            </p>
-            <h1 className="text-base sm:text-lg font-bold text-[#111827] dark:text-[#F8FAFC] truncate">
-              {currentStepMeta.title}
-            </h1>
+    <div className="max-w-3xl mx-auto px-3 sm:px-6 py-3 sm:py-6 space-y-4">
+      {/* Compact Google-Styled Web App Header & Segmented Progress */}
+      <div className="rounded-2xl border border-[#DADCE0] dark:border-[#24344D] bg-white dark:bg-[#162338] overflow-hidden shadow-[var(--yegna-shadow-card)]">
+        <div className="h-1 w-full bg-gradient-to-r from-[#4285F4] via-[#EA4335] via-[#FBBC05] to-[#34A853]" />
+        <div className="p-3.5 sm:p-4 space-y-3">
+          <div className="flex items-center justify-between gap-2">
+            <div className="min-w-0">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-[#1A73E8] dark:text-[#60A5FA]">
+                eSIM Activation App
+              </p>
+              <h1 className="text-base sm:text-lg font-bold text-[#111827] dark:text-[#F8FAFC] truncate">
+                {currentStepMeta.title}
+              </h1>
+            </div>
+            <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-[#E8F0FE] dark:bg-[#13254A] text-xs font-bold text-[#1A73E8] dark:text-[#60A5FA] tabular-nums shrink-0">
+              Step {step} / 6
+            </span>
           </div>
-          <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-[#EEF3FF] dark:bg-[#13254A] text-xs font-bold text-[#0A2DB8] dark:text-[#60A5FA] tabular-nums shrink-0">
-            Step {step} / 6
-          </span>
-        </div>
 
-        {/* 6-Segment Progress Bar + Compact Mobile Step Rail */}
-        <div className="grid grid-cols-6 gap-1.5" aria-label="Activation progress">
-          {STEP_META.map((item) => {
-            const active = step === item.num;
-            const done = step > item.num;
-            return (
-              <div key={item.num} className="space-y-1">
-                <div
-                  className={`h-1.5 rounded-full transition-colors ${
-                    active
-                      ? 'bg-[#0A2DB8] dark:bg-[#3B82F6]'
-                      : done
-                        ? 'bg-[#16A34A] dark:bg-[#22C55E]'
-                        : 'bg-[#E5E7EB] dark:bg-[#24344D]'
-                  }`}
-                />
-                <span
-                  className={`block text-[10px] sm:text-[11px] font-semibold text-center truncate ${
-                    active
-                      ? 'text-[#0A2DB8] dark:text-[#60A5FA]'
-                      : done
-                        ? 'text-[#15803D] dark:text-[#4ADE80]'
-                        : 'text-[#94A3B8] dark:text-[#64748B]'
-                  }`}
-                >
-                  {item.short}
-                </span>
-              </div>
-            );
-          })}
+          <div className="grid grid-cols-6 gap-1.5" aria-label="Activation progress">
+            {STEP_META.map((item) => {
+              const active = step === item.num;
+              const done = step > item.num;
+              return (
+                <div key={item.num} className="space-y-1">
+                  <div
+                    className={`h-1.5 rounded-full transition-colors ${
+                      active
+                        ? 'bg-[#1A73E8] dark:bg-[#3B82F6]'
+                        : done
+                          ? 'bg-[#34A853] dark:bg-[#22C55E]'
+                          : 'bg-[#E5E7EB] dark:bg-[#24344D]'
+                    }`}
+                  />
+                  <span
+                    className={`block text-[10px] sm:text-[11px] font-semibold text-center truncate ${
+                      active
+                        ? 'text-[#1A73E8] dark:text-[#60A5FA]'
+                        : done
+                          ? 'text-[#188038] dark:text-[#4ADE80]'
+                          : 'text-[#5F6368] dark:text-[#94A3B8]'
+                    }`}
+                  >
+                    {item.short}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
         </div>
       </div>
 
@@ -391,169 +501,196 @@ export function BuyEsimPage() {
 
       {/* STEP 1: OPERATOR & PRODUCT */}
       {step === 1 && (
-        <Card padding="sm" className="sm:p-6 space-y-5">
+        <Card padding="sm" className="sm:p-6 rounded-2xl border-[#DADCE0] dark:border-[#24344D] space-y-5">
           <CardHeader title="Step 1 · Select Operator & eSIM Service" />
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {operators.map((op) => {
-              const unavailable = !op.isEnabled || op.integrationStatus === 'coming_soon';
-              const selected = selectedOperator === op.operatorCode && !unavailable;
-              return (
-                <button
-                  key={op.operatorCode}
-                  type="button"
-                  disabled={unavailable}
-                  onClick={() => !unavailable && setSelectedOperator(op.operatorCode)}
-                  className={`w-full min-h-[64px] text-left p-3.5 rounded-xl border-2 transition-colors ${
-                    unavailable
-                      ? 'opacity-55 cursor-not-allowed border-[#E5E7EB] dark:border-[#24344D] bg-[#F8FAFC] dark:bg-[#111C2E]'
-                      : selected
-                        ? 'border-[#0A2DB8] bg-[#EEF3FF]/70 dark:bg-[#13254A] cursor-pointer'
-                        : 'border-[#E5E7EB] dark:border-[#24344D] hover:border-[#619ED8] cursor-pointer'
-                  }`}
-                >
-                  <div className="flex items-center justify-between gap-2.5">
-                    <div className="inline-flex items-center gap-2.5 min-w-0">
-                      <span className="inline-flex h-9 w-20 items-center justify-center rounded-lg bg-white border border-[#E5E7EB] px-1.5 py-1 shrink-0">
-                        <img
-                          src={OPERATOR_LOGO_MAP[op.operatorCode].src}
-                          alt={op.displayName}
-                          className="h-full w-full object-contain"
-                        />
-                      </span>
-                      <span className="text-sm sm:text-base font-bold text-[#111827] dark:text-[#F8FAFC] truncate">
-                        {op.displayName}
-                      </span>
-                    </div>
-                    {unavailable ? (
-                      <StatusBadge status="coming_soon" label="Unavailable" />
-                    ) : (
-                      <span
-                        className={`inline-flex h-6 w-6 items-center justify-center rounded-full border shrink-0 ${
-                          selected
-                            ? 'bg-[#0A2DB8] border-[#0A2DB8] text-white'
-                            : 'border-[#CBD5E1] dark:border-[#334866] bg-white dark:bg-[#111C2E]'
+          {catalogLoading ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {[0, 1].map((idx) => (
+                <div
+                  key={idx}
+                  className="h-16 rounded-2xl border border-[#DADCE0] dark:border-[#24344D] bg-[#F8FAFD] dark:bg-[#111C2E] animate-pulse"
+                />
+              ))}
+            </div>
+          ) : catalogError || operators.length === 0 ? (
+            <Alert tone="error" title="Could not load operators">
+              <div className="space-y-2">
+                <p>{catalogError ?? 'No mobile operators were returned.'}</p>
+                <Button size="sm" variant="secondary" onClick={loadCatalog}>
+                  Retry Loading Operators
+                </Button>
+              </div>
+            </Alert>
+          ) : (
+            <>
+              <div className="space-y-2.5">
+                <p className="text-xs font-semibold uppercase tracking-wider text-[#5F6368] dark:text-[#94A3B8]">
+                  Choose your Operator
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {operators.map((op) => {
+                    const unavailable = !op.isEnabled || op.integrationStatus === 'coming_soon';
+                    const selected = selectedOperator === op.operatorCode && !unavailable;
+                    return (
+                      <button
+                        key={op.operatorCode}
+                        type="button"
+                        disabled={unavailable}
+                        onClick={() => !unavailable && setSelectedOperator(op.operatorCode)}
+                        className={`w-full min-h-[68px] text-left p-3.5 rounded-2xl border-2 transition-colors ${
+                          unavailable
+                            ? 'opacity-55 cursor-not-allowed border-[#DADCE0] dark:border-[#24344D] bg-[#F8FAFD] dark:bg-[#111C2E]'
+                            : selected
+                              ? 'border-[#1A73E8] bg-[#E8F0FE]/65 dark:bg-[#13254A] cursor-pointer'
+                              : 'border-[#DADCE0] dark:border-[#24344D] bg-white dark:bg-[#162338] hover:border-[#4285F4] cursor-pointer'
                         }`}
-                        aria-hidden="true"
                       >
-                        {selected && <Check className="h-3.5 w-3.5" />}
-                      </span>
-                    )}
-                  </div>
-                </button>
-              );
-            })}
-          </div>
+                        <div className="flex items-center justify-between gap-2.5">
+                          <div className="inline-flex items-center gap-2.5 min-w-0">
+                            <span className="inline-flex h-10 w-20 items-center justify-center rounded-xl bg-white border border-[#DADCE0] px-2 py-1 shrink-0">
+                              <img
+                                src={OPERATOR_LOGO_MAP[op.operatorCode].src}
+                                alt={op.displayName}
+                                className="h-full w-full object-contain"
+                              />
+                            </span>
+                            <span className="text-sm sm:text-base font-bold text-[#111827] dark:text-[#F8FAFC] truncate">
+                              {op.displayName}
+                            </span>
+                          </div>
+                          {unavailable ? (
+                            <StatusBadge status="coming_soon" label="Unavailable" />
+                          ) : (
+                            <span
+                              className={`inline-flex h-6 w-6 items-center justify-center rounded-full border shrink-0 ${
+                                selected
+                                  ? 'bg-[#1A73E8] border-[#1A73E8] text-white'
+                                  : 'border-[#CBD5E1] dark:border-[#334866] bg-white dark:bg-[#111C2E]'
+                              }`}
+                              aria-hidden="true"
+                            >
+                              {selected && <Check className="h-3.5 w-3.5" />}
+                            </span>
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
 
-          <div className="space-y-2.5">
-            <p className="text-xs font-semibold uppercase tracking-wider text-[#64748B] dark:text-[#94A3B8]">
-              Available Services
-            </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-              {operatorProducts.map((prod) => {
-                const disabled = !prod.isActive || !activeOperatorCfg?.isEnabled;
-                const active = selectedProductId === prod.id && !disabled;
-                return (
-                  <button
-                    key={prod.id}
-                    type="button"
-                    disabled={disabled}
-                    onClick={() => !disabled && setSelectedProductId(prod.id)}
-                    className={`w-full min-h-[56px] text-left p-3.5 rounded-xl border-2 transition-colors ${
-                      disabled
-                        ? 'opacity-55 cursor-not-allowed bg-[#F8FAFC] dark:bg-[#111C2E] border-[#E5E7EB] dark:border-[#24344D]'
-                        : active
-                          ? 'border-[#0A2DB8] bg-[#EEF3FF]/60 dark:bg-[#13254A] cursor-pointer'
-                          : 'border-[#E5E7EB] dark:border-[#24344D] hover:border-[#619ED8] cursor-pointer'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-sm font-semibold text-[#111827] dark:text-[#F8FAFC]">
-                        {prod.name}
-                      </span>
-                      {disabled ? (
-                        <StatusBadge status="coming_soon" label="Unavailable" />
-                      ) : (
-                        <span
-                          className={`inline-flex h-5 w-5 items-center justify-center rounded-full border shrink-0 ${
-                            active
-                              ? 'bg-[#0A2DB8] border-[#0A2DB8] text-white'
-                              : 'border-[#CBD5E1] dark:border-[#334866] bg-white dark:bg-[#111C2E]'
-                          }`}
-                          aria-hidden="true"
-                        >
-                          {active && <Check className="h-3 w-3" />}
-                        </span>
-                      )}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+              <div className="space-y-2.5">
+                <p className="text-xs font-semibold uppercase tracking-wider text-[#5F6368] dark:text-[#94A3B8]">
+                  Available Services
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  {operatorProducts.map((prod) => {
+                    const disabled = !prod.isActive || !activeOperatorCfg?.isEnabled;
+                    const active = selectedProductId === prod.id && !disabled;
+                    return (
+                      <button
+                        key={prod.id}
+                        type="button"
+                        disabled={disabled}
+                        onClick={() => !disabled && setSelectedProductId(prod.id)}
+                        className={`w-full min-h-[58px] text-left p-3.5 rounded-2xl border-2 transition-colors ${
+                          disabled
+                            ? 'opacity-55 cursor-not-allowed bg-[#F8FAFD] dark:bg-[#111C2E] border-[#DADCE0] dark:border-[#24344D]'
+                            : active
+                              ? 'border-[#1A73E8] bg-[#E8F0FE]/60 dark:bg-[#13254A] cursor-pointer'
+                              : 'border-[#DADCE0] dark:border-[#24344D] bg-white dark:bg-[#162338] hover:border-[#4285F4] cursor-pointer'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-sm font-semibold text-[#111827] dark:text-[#F8FAFC]">
+                            {prod.name}
+                          </span>
+                          {disabled ? (
+                            <StatusBadge status="coming_soon" label="Unavailable" />
+                          ) : (
+                            <span
+                              className={`inline-flex h-5 w-5 items-center justify-center rounded-full border shrink-0 ${
+                                active
+                                  ? 'bg-[#1A73E8] border-[#1A73E8] text-white'
+                                  : 'border-[#CBD5E1] dark:border-[#334866] bg-white dark:bg-[#111C2E]'
+                              }`}
+                              aria-hidden="true"
+                            >
+                              {active && <Check className="h-3 w-3" />}
+                            </span>
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
 
-          {activeProduct?.productType === 'sim_to_esim_conversion' && activeProduct.isActive && (
-            <div className="w-full sm:max-w-sm">
-              <Input
-                label="Existing Ethiopian Mobile Number to Convert"
-                type="tel"
-                placeholder="+251911223344"
-                value={existingMsisdn}
-                onChange={(e) => setExistingMsisdn(e.target.value)}
-                helperText="Include +251 (e.g. +251911223344). Keep your physical SIM active until QR scan completes."
-                required
-              />
-            </div>
+              {activeProduct?.productType === 'sim_to_esim_conversion' && activeProduct.isActive && (
+                <div className="w-full sm:max-w-sm">
+                  <Input
+                    label="Existing Ethiopian Mobile Number to Convert"
+                    type="tel"
+                    placeholder="+251911223344"
+                    value={existingMsisdn}
+                    onChange={(e) => setExistingMsisdn(e.target.value)}
+                    helperText="Include +251 (e.g. +251911223344). Keep your physical SIM active until QR scan completes."
+                    required
+                  />
+                </div>
+              )}
+
+              <div className="rounded-2xl bg-[#F8FAFD] dark:bg-[#111C2E] border border-[#DADCE0] dark:border-[#24344D] p-3 flex items-start gap-2.5 text-xs text-[#475569] dark:text-[#CBD5E1]">
+                <Info className="h-4 w-4 text-[#1A73E8] dark:text-[#60A5FA] shrink-0 mt-0.5" />
+                <span>
+                  {activeProduct?.productType === 'sim_to_esim_conversion'
+                    ? 'Next you will verify your phone supports eSIM, confirm Fayda subscriber KYC, and receive your conversion QR.'
+                    : 'Quick setup: check phone compatibility, verify Fayda identity, pick your number, and get your QR code.'}
+                </span>
+              </div>
+
+              <div className="pt-1">
+                <Button
+                  size="lg"
+                  className="w-full sm:w-auto sm:ml-auto sm:flex rounded-full"
+                  disabled={
+                    !activeOperatorCfg?.isEnabled ||
+                    !activeProduct?.isActive ||
+                    (activeProduct?.productType === 'sim_to_esim_conversion' &&
+                      existingMsisdn.trim().length < 9)
+                  }
+                  rightIcon={<ArrowRight className="h-4 w-4" />}
+                  onClick={() => setStep(2)}
+                >
+                  Continue to Device Check
+                </Button>
+              </div>
+            </>
           )}
-
-          {/* Informative Guidance Strip */}
-          <div className="rounded-xl bg-[#F8FAFC] dark:bg-[#111C2E] border border-[#E5E7EB] dark:border-[#24344D] p-3 flex items-start gap-2.5 text-xs text-[#475569] dark:text-[#CBD5E1]">
-            <Info className="h-4 w-4 text-[#0A2DB8] dark:text-[#60A5FA] shrink-0 mt-0.5" />
-            <span>
-              {activeProduct?.productType === 'sim_to_esim_conversion'
-                ? 'Next you will verify your phone supports eSIM, confirm Fayda subscriber KYC, and receive your conversion QR.'
-                : 'Quick 5-minute setup: check phone compatibility, verify Fayda identity, pick your number, and get your QR code.'}
-            </span>
-          </div>
-
-          <div className="pt-1">
-            <Button
-              size="lg"
-              className="w-full sm:w-auto sm:ml-auto sm:flex"
-              disabled={
-                !activeOperatorCfg?.isEnabled ||
-                !activeProduct?.isActive ||
-                (activeProduct?.productType === 'sim_to_esim_conversion' &&
-                  existingMsisdn.trim().length < 9)
-              }
-              rightIcon={<ArrowRight className="h-4 w-4" />}
-              onClick={() => setStep(2)}
-            >
-              Continue to Device Check
-            </Button>
-          </div>
         </Card>
       )}
 
       {/* STEP 2: DEVICE COMPATIBILITY */}
       {step === 2 && (
-        <Card padding="sm" className="sm:p-6 space-y-5">
+        <Card padding="sm" className="sm:p-6 rounded-2xl border-[#DADCE0] dark:border-[#24344D] space-y-5">
           <CardHeader
             title="Step 2 · Confirm Device eSIM Compatibility"
             subtitle="Make sure your smartphone supports eSIM before starting your order"
           />
 
-          {/* Quick 2-Step Verification Helper */}
-          <div className="rounded-xl bg-[#EEF3FF]/70 dark:bg-[#13254A] border border-[#C7D6FE] dark:border-[#2B4C8C] p-3.5 space-y-1.5 text-xs">
-            <p className="font-semibold text-[#0A2DB8] dark:text-[#60A5FA] flex items-center gap-1.5">
+          <div className="rounded-2xl bg-[#E8F0FE]/70 dark:bg-[#13254A] border border-[#C7D6FE] dark:border-[#2B4C8C] p-3.5 space-y-1.5 text-xs">
+            <p className="font-semibold text-[#1A73E8] dark:text-[#60A5FA] flex items-center gap-1.5">
               <Smartphone className="h-3.5 w-3.5 shrink-0" />
               How to verify on your phone in 5 seconds:
             </p>
             <p className="text-[#1E293B] dark:text-[#E2E8F0]">
-              1. Open your Phone app and dial <strong className="tabular-nums">*#06#</strong> — look for a 32-digit <strong>EID</strong> number.
+              1. Open your Phone app and dial <strong className="tabular-nums">*#06#</strong> — look
+              for a 32-digit <strong>EID</strong> number.
             </p>
             <p className="text-[#1E293B] dark:text-[#E2E8F0]">
-              2. Ensure your phone is <strong>carrier-unlocked</strong> (not locked to a foreign network).
+              2. Ensure your phone is <strong>carrier-unlocked</strong> (not locked to a foreign
+              network).
             </p>
           </div>
 
@@ -576,58 +713,65 @@ export function BuyEsimPage() {
                     key={os}
                     type="button"
                     onClick={() => setSelectedOs(os)}
-                    className={`min-h-[44px] py-2.5 px-3 rounded-lg border-2 text-xs sm:text-sm font-semibold cursor-pointer transition-colors ${
+                    className={`min-h-[44px] py-2.5 px-3 rounded-xl border-2 text-xs sm:text-sm font-semibold cursor-pointer transition-colors ${
                       selectedOs === os
-                        ? 'border-[#0A2DB8] bg-[#EEF3FF] dark:bg-[#13254A] text-[#0A2DB8] dark:text-[#60A5FA]'
-                        : 'border-[#E5E7EB] dark:border-[#24344D] text-[#64748B] dark:text-[#CBD5E1]'
+                        ? 'border-[#1A73E8] bg-[#E8F0FE] dark:bg-[#13254A] text-[#1A73E8] dark:text-[#60A5FA]'
+                        : 'border-[#DADCE0] dark:border-[#24344D] text-[#5F6368] dark:text-[#CBD5E1]'
                     }`}
                   >
                     {os === 'ios' ? 'Apple iOS' : 'Android'}
                   </button>
                 ))}
               </div>
-              <p className="mt-1.5 text-xs text-[#64748B] dark:text-[#94A3B8]">
+              <p className="mt-1.5 text-xs text-[#5F6368] dark:text-[#94A3B8]">
                 Used to tailor your Step 6 install guide.
               </p>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-            {filteredDevices.map((d) => (
-              <button
-                key={d.id}
-                type="button"
-                disabled={!d.esimSupported}
-                onClick={() => {
-                  setSelectedDeviceModel(`${d.brand} ${d.modelFamily}`);
-                  setSelectedOs(d.osPlatform);
-                }}
-                className={`w-full text-left p-3 rounded-xl border transition-colors ${
-                  !d.esimSupported
-                    ? 'opacity-65 cursor-not-allowed border-[#FECACA] bg-[#FEF2F2]/40 dark:bg-[#7F1D1D]/15'
-                    : selectedDeviceModel.includes(d.modelFamily)
-                      ? 'border-[#0A2DB8] bg-[#EEF3FF]/60 dark:bg-[#13254A] cursor-pointer'
-                      : 'border-[#E5E7EB] dark:border-[#24344D] cursor-pointer'
-                }`}
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-xs font-semibold text-[#0A2DB8] dark:text-[#60A5FA]">
-                    {d.brand}
-                  </span>
-                  <StatusBadge
-                    status={d.esimSupported ? 'verified' : 'failed'}
-                    label={d.esimSupported ? 'Supported' : 'No eSIM'}
-                  />
-                </div>
-                <p className="mt-1 text-sm font-semibold text-[#111827] dark:text-[#F8FAFC]">
-                  {d.modelFamily}
-                </p>
-                <p className="mt-0.5 text-[11px] text-[#64748B] dark:text-[#CBD5E1] leading-snug">
-                  {d.regionalCaveat}
-                </p>
-              </button>
-            ))}
-          </div>
+          {filteredDevices.length === 0 ? (
+            <Alert tone="info">
+              No preset models matched your search. You can type your exact handset model below and
+              confirm *#06# EID support.
+            </Alert>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              {filteredDevices.map((d) => (
+                <button
+                  key={d.id}
+                  type="button"
+                  disabled={!d.esimSupported}
+                  onClick={() => {
+                    setSelectedDeviceModel(`${d.brand} ${d.modelFamily}`);
+                    setSelectedOs(d.osPlatform);
+                  }}
+                  className={`w-full text-left p-3 rounded-2xl border transition-colors ${
+                    !d.esimSupported
+                      ? 'opacity-65 cursor-not-allowed border-[#FECACA] bg-[#FEF2F2]/40 dark:bg-[#7F1D1D]/15'
+                      : selectedDeviceModel.includes(d.modelFamily)
+                        ? 'border-[#1A73E8] bg-[#E8F0FE]/60 dark:bg-[#13254A] cursor-pointer'
+                        : 'border-[#DADCE0] dark:border-[#24344D] cursor-pointer'
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs font-semibold text-[#1A73E8] dark:text-[#60A5FA]">
+                      {d.brand}
+                    </span>
+                    <StatusBadge
+                      status={d.esimSupported ? 'verified' : 'failed'}
+                      label={d.esimSupported ? 'Supported' : 'No eSIM'}
+                    />
+                  </div>
+                  <p className="mt-1 text-sm font-semibold text-[#111827] dark:text-[#F8FAFC]">
+                    {d.modelFamily}
+                  </p>
+                  <p className="mt-0.5 text-[11px] text-[#5F6368] dark:text-[#CBD5E1] leading-snug">
+                    {d.regionalCaveat}
+                  </p>
+                </button>
+              ))}
+            </div>
+          )}
 
           <Input
             label="Your Selected Handset Model"
@@ -637,12 +781,12 @@ export function BuyEsimPage() {
             required
           />
 
-          <label className="flex items-start gap-3 p-3.5 rounded-xl bg-[#F8FAFC] dark:bg-[#111C2E] border border-[#E5E7EB] dark:border-[#24344D] cursor-pointer">
+          <label className="flex items-start gap-3 p-3.5 rounded-2xl bg-[#F8FAFD] dark:bg-[#111C2E] border border-[#DADCE0] dark:border-[#24344D] cursor-pointer">
             <input
               type="checkbox"
               checked={deviceConfirmed}
               onChange={(e) => setDeviceConfirmed(e.target.checked)}
-              className="mt-0.5 h-5 w-5 rounded accent-[#0A2DB8] shrink-0"
+              className="mt-0.5 h-5 w-5 rounded accent-[#1A73E8] shrink-0"
             />
             <span className="text-xs sm:text-sm text-[#111827] dark:text-[#F8FAFC] leading-relaxed">
               I confirm my phone is carrier-unlocked and displays an EID when dialing{' '}
@@ -650,17 +794,11 @@ export function BuyEsimPage() {
             </span>
           </label>
 
-          {!firebaseUser && (
-            <Alert tone="info" title="Sign in to continue">
-              Sign in with your Yene Tele account to save your order, verify Fayda identity, and
-              store your eSIM QR code securely.
-            </Alert>
-          )}
-
           <div className="grid grid-cols-[auto_1fr] sm:flex sm:items-center sm:justify-between gap-2.5 pt-1">
             <Button
               variant="secondary"
               size="lg"
+              className="rounded-full"
               leftIcon={<ArrowLeft className="h-4 w-4" />}
               onClick={() => setStep(1)}
             >
@@ -668,13 +806,13 @@ export function BuyEsimPage() {
             </Button>
             <Button
               size="lg"
-              className="w-full sm:w-auto"
+              className="w-full sm:w-auto rounded-full"
               disabled={!deviceConfirmed}
               loading={busy}
               rightIcon={<ArrowRight className="h-4 w-4" />}
               onClick={handleStartDraftAndProceed}
             >
-              {firebaseUser ? 'Next: Fayda KYC' : 'Sign In to Continue'}
+              Next: Fayda KYC
             </Button>
           </div>
         </Card>
@@ -682,14 +820,14 @@ export function BuyEsimPage() {
 
       {/* STEP 3: FAYDA KYC CONSENT BOUNDARY */}
       {step === 3 && order && (
-        <Card padding="sm" className="sm:p-6 space-y-5">
+        <Card padding="sm" className="sm:p-6 rounded-2xl border-[#DADCE0] dark:border-[#24344D] space-y-5">
           <CardHeader
             title="Step 3 · Subscriber Fayda Identity"
             subtitle={`Order ${order.orderNumber} · Required for Ethiopian SIM registration`}
           />
 
-          <div className="rounded-xl bg-[#EEF3FF]/70 dark:bg-[#13254A] border border-[#C7D6FE] dark:border-[#2B4C8C] p-3.5 flex items-start gap-2.5 text-xs text-[#1E293B] dark:text-[#E2E8F0]">
-            <Fingerprint className="h-4 w-4 text-[#0A2DB8] dark:text-[#60A5FA] shrink-0 mt-0.5" />
+          <div className="rounded-2xl bg-[#E8F0FE]/70 dark:bg-[#13254A] border border-[#C7D6FE] dark:border-[#2B4C8C] p-3.5 flex items-start gap-2.5 text-xs text-[#1E293B] dark:text-[#E2E8F0]">
+            <Fingerprint className="h-4 w-4 text-[#1A73E8] dark:text-[#60A5FA] shrink-0 mt-0.5" />
             <span>
               Enter your personal details exactly as shown on your Ethiopian Fayda ID card or
               Fayda app. Never share official verification OTPs with anyone.
@@ -726,12 +864,12 @@ export function BuyEsimPage() {
               required
             />
 
-            <label className="flex items-start gap-3 p-3.5 rounded-xl bg-[#EEF3FF]/60 dark:bg-[#13254A] border border-[#C7D6FE] dark:border-[#2B4C8C] cursor-pointer">
+            <label className="flex items-start gap-3 p-3.5 rounded-2xl bg-[#E8F0FE]/60 dark:bg-[#13254A] border border-[#C7D6FE] dark:border-[#2B4C8C] cursor-pointer">
               <input
                 type="checkbox"
                 checked={kycConsent}
                 onChange={(e) => setKycConsent(e.target.checked)}
-                className="mt-0.5 h-5 w-5 rounded accent-[#0A2DB8] shrink-0"
+                className="mt-0.5 h-5 w-5 rounded accent-[#1A73E8] shrink-0"
                 required
               />
               <span className="text-xs sm:text-sm text-[#111827] dark:text-[#F8FAFC] leading-relaxed">
@@ -745,6 +883,7 @@ export function BuyEsimPage() {
                 type="button"
                 variant="secondary"
                 size="lg"
+                className="rounded-full"
                 leftIcon={<ArrowLeft className="h-4 w-4" />}
                 onClick={() => setStep(2)}
               >
@@ -753,7 +892,7 @@ export function BuyEsimPage() {
               <Button
                 type="submit"
                 size="lg"
-                className="w-full sm:w-auto"
+                className="w-full sm:w-auto rounded-full"
                 loading={busy}
                 leftIcon={<Fingerprint className="h-4 w-4" />}
               >
@@ -766,7 +905,7 @@ export function BuyEsimPage() {
 
       {/* STEP 4: NUMBER AVAILABILITY & SELECTION */}
       {step === 4 && order && (
-        <Card padding="sm" className="sm:p-6 space-y-5">
+        <Card padding="sm" className="sm:p-6 rounded-2xl border-[#DADCE0] dark:border-[#24344D] space-y-5">
           <CardHeader
             title="Step 4 · Choose Your Mobile Number"
             subtitle={
@@ -793,7 +932,7 @@ export function BuyEsimPage() {
                   helperText="Search any lucky digits or ending pattern."
                 />
                 <div>
-                  <p className="text-xs font-semibold text-[#64748B] dark:text-[#94A3B8] mb-1.5">
+                  <p className="text-xs font-semibold text-[#5F6368] dark:text-[#94A3B8] mb-1.5">
                     Filter by Number Tier
                   </p>
                   <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
@@ -803,10 +942,10 @@ export function BuyEsimPage() {
                           key={tier}
                           type="button"
                           onClick={() => setTierFilter(tier)}
-                          className={`min-h-[38px] px-3 py-1.5 rounded-lg border text-xs font-semibold capitalize whitespace-nowrap shrink-0 cursor-pointer transition-colors ${
+                          className={`min-h-[38px] px-3.5 py-1.5 rounded-full border text-xs font-semibold capitalize whitespace-nowrap shrink-0 cursor-pointer transition-colors ${
                             tierFilter === tier
-                              ? 'border-[#0A2DB8] bg-[#EEF3FF] dark:bg-[#13254A] text-[#0A2DB8] dark:text-[#60A5FA]'
-                              : 'border-[#E5E7EB] dark:border-[#24344D] text-[#64748B] dark:text-[#CBD5E1]'
+                              ? 'border-[#1A73E8] bg-[#E8F0FE] dark:bg-[#13254A] text-[#1A73E8] dark:text-[#60A5FA]'
+                              : 'border-[#DADCE0] dark:border-[#24344D] text-[#5F6368] dark:text-[#CBD5E1]'
                           }`}
                         >
                           {tier}
@@ -817,7 +956,16 @@ export function BuyEsimPage() {
                 </div>
               </div>
 
-              {numbers.length === 0 ? (
+              {numbersLoading ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                  {[0, 1, 2].map((idx) => (
+                    <div
+                      key={idx}
+                      className="h-16 rounded-2xl border border-[#DADCE0] dark:border-[#24344D] bg-[#F8FAFD] dark:bg-[#111C2E] animate-pulse"
+                    />
+                  ))}
+                </div>
+              ) : numbers.length === 0 ? (
                 <Alert tone="warning">
                   No matching numbers were found for this filter. Try clearing your search or
                   switching tier filters.
@@ -838,10 +986,10 @@ export function BuyEsimPage() {
                           setSelectedDirectMsisdn(item.msisdn);
                           setPreferredTier(item.numberTier);
                         }}
-                        className={`w-full min-h-[60px] text-left p-3.5 rounded-xl border-2 transition-colors cursor-pointer ${
+                        className={`w-full min-h-[60px] text-left p-3.5 rounded-2xl border-2 transition-colors cursor-pointer ${
                           active
-                            ? 'border-[#0A2DB8] bg-[#EEF3FF] dark:bg-[#13254A]'
-                            : 'border-[#E5E7EB] dark:border-[#24344D] hover:border-[#619ED8]'
+                            ? 'border-[#1A73E8] bg-[#E8F0FE] dark:bg-[#13254A]'
+                            : 'border-[#DADCE0] dark:border-[#24344D] hover:border-[#4285F4]'
                         }`}
                       >
                         <div className="flex items-center justify-between gap-2">
@@ -852,7 +1000,7 @@ export function BuyEsimPage() {
                             {item.numberTier}
                           </span>
                         </div>
-                        <p className="mt-1 text-[11px] text-[#64748B] dark:text-[#94A3B8]">
+                        <p className="mt-1 text-[11px] text-[#5F6368] dark:text-[#94A3B8]">
                           {item.supportsPrePaymentReservation
                             ? '15-min checkout hold included'
                             : 'Verified at payment'}
@@ -864,9 +1012,9 @@ export function BuyEsimPage() {
               )}
 
               {selectedNumberPreview && (
-                <div className="rounded-xl bg-[#EEF3FF]/70 dark:bg-[#13254A] border border-[#C7D6FE] dark:border-[#2B4C8C] px-3.5 py-2.5 flex items-center justify-between gap-2 text-xs">
+                <div className="rounded-2xl bg-[#E8F0FE]/70 dark:bg-[#13254A] border border-[#C7D6FE] dark:border-[#2B4C8C] px-3.5 py-2.5 flex items-center justify-between gap-2 text-xs">
                   <span className="text-[#475569] dark:text-[#CBD5E1]">Selected Number</span>
-                  <strong className="text-sm font-bold text-[#0A2DB8] dark:text-[#60A5FA] tabular-nums">
+                  <strong className="text-sm font-bold text-[#1A73E8] dark:text-[#60A5FA] tabular-nums">
                     {selectedNumberPreview}
                   </strong>
                 </div>
@@ -884,10 +1032,10 @@ export function BuyEsimPage() {
                     key={tier}
                     type="button"
                     onClick={() => setPreferredTier(tier)}
-                    className={`min-h-[44px] py-2.5 px-3 rounded-lg border-2 text-xs font-semibold capitalize cursor-pointer ${
+                    className={`min-h-[44px] py-2.5 px-3 rounded-full border-2 text-xs font-semibold capitalize cursor-pointer ${
                       preferredTier === tier
-                        ? 'border-[#0A2DB8] bg-[#EEF3FF] dark:bg-[#13254A] text-[#0A2DB8] dark:text-[#60A5FA]'
-                        : 'border-[#E5E7EB] dark:border-[#24344D] text-[#64748B] dark:text-[#CBD5E1]'
+                        ? 'border-[#1A73E8] bg-[#E8F0FE] dark:bg-[#13254A] text-[#1A73E8] dark:text-[#60A5FA]'
+                        : 'border-[#DADCE0] dark:border-[#24344D] text-[#5F6368] dark:text-[#CBD5E1]'
                     }`}
                   >
                     {tier}
@@ -901,6 +1049,7 @@ export function BuyEsimPage() {
             <Button
               variant="secondary"
               size="lg"
+              className="rounded-full"
               leftIcon={<ArrowLeft className="h-4 w-4" />}
               onClick={() => setStep(3)}
             >
@@ -908,7 +1057,7 @@ export function BuyEsimPage() {
             </Button>
             <Button
               size="lg"
-              className="w-full sm:w-auto"
+              className="w-full sm:w-auto rounded-full"
               loading={busy}
               disabled={
                 order.productType !== 'sim_to_esim_conversion' &&
@@ -926,21 +1075,21 @@ export function BuyEsimPage() {
 
       {/* STEP 5: ORDER REVIEW & CHAPA CHECKOUT */}
       {step === 5 && order && (
-        <Card padding="sm" className="sm:p-6 space-y-5">
+        <Card padding="sm" className="sm:p-6 rounded-2xl border-[#DADCE0] dark:border-[#24344D] space-y-5">
           <CardHeader
             title="Step 5 · Review Order &amp; Chapa Payment"
             subtitle={`Order ${order.orderNumber} · Verified server-side before provisioning`}
           />
 
-          <div className="rounded-xl border border-[#E5E7EB] dark:border-[#24344D] bg-[#F8FAFC] dark:bg-[#111C2E] px-4 py-2 divide-y divide-[#E5E7EB] dark:divide-[#24344D] text-sm">
+          <div className="rounded-2xl border border-[#DADCE0] dark:border-[#24344D] bg-[#F8FAFD] dark:bg-[#111C2E] px-4 py-2 divide-y divide-[#DADCE0] dark:divide-[#24344D] text-sm">
             <div className="flex items-center justify-between gap-3 py-2.5">
-              <span className="text-[#64748B] dark:text-[#94A3B8]">Operator</span>
+              <span className="text-[#5F6368] dark:text-[#94A3B8]">Operator</span>
               <span className="font-semibold text-right">
                 {order.operatorCode === 'ethio_telecom' ? 'Ethio telecom' : 'Safaricom Ethiopia'}
               </span>
             </div>
             <div className="flex items-center justify-between gap-3 py-2.5">
-              <span className="text-[#64748B] dark:text-[#94A3B8]">Service</span>
+              <span className="text-[#5F6368] dark:text-[#94A3B8]">Service</span>
               <span className="font-medium text-right">
                 {order.productType === 'sim_to_esim_conversion'
                   ? 'SIM to eSIM Conversion'
@@ -948,19 +1097,19 @@ export function BuyEsimPage() {
               </span>
             </div>
             <div className="flex items-center justify-between gap-3 py-2.5">
-              <span className="text-[#64748B] dark:text-[#94A3B8]">Device</span>
+              <span className="text-[#5F6368] dark:text-[#94A3B8]">Device</span>
               <span className="font-medium text-right truncate max-w-[200px] sm:max-w-xs">
                 {order.deviceModel ?? 'Confirmed eSIM Device'}
               </span>
             </div>
             <div className="flex items-center justify-between gap-3 py-2.5">
-              <span className="text-[#64748B] dark:text-[#94A3B8]">Mobile Number</span>
+              <span className="text-[#5F6368] dark:text-[#94A3B8]">Mobile Number</span>
               <span className="font-semibold tabular-nums text-right">
                 {order.reservedMsisdn ?? `Assigned (${order.selectedNumberTier})`}
               </span>
             </div>
             <div className="flex items-center justify-between gap-3 py-2.5">
-              <span className="text-[#64748B] dark:text-[#94A3B8]">Hold Status</span>
+              <span className="text-[#5F6368] dark:text-[#94A3B8]">Hold Status</span>
               <span className="text-xs font-medium text-[#111827] dark:text-[#F8FAFC] text-right">
                 {order.numberReservationConfirmed
                   ? 'Held for 15 minutes'
@@ -968,12 +1117,12 @@ export function BuyEsimPage() {
               </span>
             </div>
             <div className="flex items-center justify-between gap-3 py-2.5">
-              <span className="text-[#64748B] dark:text-[#94A3B8]">Fayda Identity</span>
+              <span className="text-[#5F6368] dark:text-[#94A3B8]">Fayda Identity</span>
               <StatusBadge status="verified" label="Verified" />
             </div>
             <div className="flex items-center justify-between gap-3 py-3">
               <span className="font-semibold">Total Due</span>
-              <span className="text-base font-bold text-[#0A2DB8] dark:text-[#60A5FA] tabular-nums">
+              <span className="text-base font-bold text-[#1A73E8] dark:text-[#60A5FA] tabular-nums">
                 {order.amountEtb.toFixed(2)} ETB
               </span>
             </div>
@@ -984,6 +1133,7 @@ export function BuyEsimPage() {
               <Button
                 variant="secondary"
                 size="lg"
+                className="rounded-full"
                 leftIcon={<ArrowLeft className="h-4 w-4" />}
                 onClick={() => setStep(4)}
               >
@@ -991,7 +1141,7 @@ export function BuyEsimPage() {
               </Button>
               <Button
                 size="lg"
-                className="w-full sm:w-auto"
+                className="w-full sm:w-auto rounded-full"
                 loading={busy}
                 leftIcon={<CreditCard className="h-4 w-4" />}
                 onClick={handleInitChapa}
@@ -1012,7 +1162,7 @@ export function BuyEsimPage() {
                     href={checkoutUrl}
                     target="_top"
                     rel="noopener noreferrer"
-                    className="w-full sm:w-auto min-h-[48px] inline-flex items-center justify-center gap-2 rounded-xl px-6 text-base font-semibold bg-[#0A2DB8] text-white hover:bg-[#082496] transition-colors"
+                    className="w-full sm:w-auto min-h-[48px] inline-flex items-center justify-center gap-2 rounded-full px-6 text-base font-semibold bg-[#1A73E8] text-white hover:bg-[#1557B0] transition-colors"
                   >
                     <CreditCard className="h-4 w-4" />
                     <span>Open Chapa Checkout</span>
@@ -1020,7 +1170,7 @@ export function BuyEsimPage() {
                 )}
                 <Button
                   size="lg"
-                  className="w-full sm:w-auto"
+                  className="w-full sm:w-auto rounded-full"
                   variant={paymentIsSandbox ? 'primary' : 'secondary'}
                   loading={busy}
                   leftIcon={<ShieldCheck className="h-4 w-4" />}
@@ -1036,7 +1186,7 @@ export function BuyEsimPage() {
 
       {/* STEP 6: DELIVERY, ASYNC PENDING POLL, OR MANUAL FULFILLMENT QUEUE */}
       {step === 6 && order && (
-        <Card padding="sm" className="sm:p-6 space-y-5">
+        <Card padding="sm" className="sm:p-6 rounded-2xl border-[#DADCE0] dark:border-[#24344D] space-y-5">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <CardHeader
               title="Step 6 · eSIM Provisioning &amp; Delivery"
@@ -1063,13 +1213,13 @@ export function BuyEsimPage() {
                 eSIMs automatically once issuance completes.
               </Alert>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                <Button size="lg" className="w-full" onClick={() => navigate('/app/orders')}>
+                <Button size="lg" className="w-full rounded-full" onClick={() => navigate('/app/orders')}>
                   Track Order Status
                 </Button>
                 <Button
                   size="lg"
                   variant="secondary"
-                  className="w-full"
+                  className="w-full rounded-full"
                   onClick={() => navigate('/app')}
                 >
                   Customer Dashboard
@@ -1085,7 +1235,7 @@ export function BuyEsimPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 <Button
                   size="lg"
-                  className="w-full"
+                  className="w-full rounded-full"
                   loading={busy}
                   leftIcon={<RefreshCw className="h-4 w-4" />}
                   onClick={handlePollProvisioning}
@@ -1095,7 +1245,7 @@ export function BuyEsimPage() {
                 <Button
                   size="lg"
                   variant="secondary"
-                  className="w-full"
+                  className="w-full rounded-full"
                   onClick={() => navigate('/app/orders')}
                 >
                   View Order History
@@ -1110,13 +1260,13 @@ export function BuyEsimPage() {
                   'Your verified payment is marked Refund Pending for finance review.'}
               </Alert>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                <Button size="lg" className="w-full" onClick={() => navigate('/app/orders')}>
+                <Button size="lg" className="w-full rounded-full" onClick={() => navigate('/app/orders')}>
                   View Order &amp; Refund
                 </Button>
                 <Button
                   size="lg"
                   variant="secondary"
-                  className="w-full"
+                  className="w-full rounded-full"
                   onClick={() => navigate('/app/support')}
                 >
                   Contact Support
@@ -1127,7 +1277,7 @@ export function BuyEsimPage() {
             <div className="space-y-5">
               {activation && (
                 <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
-                  <div className="md:col-span-5 rounded-xl border border-[#C7D6FE] dark:border-[#2B4C8C] bg-[#EEF3FF] dark:bg-[#13254A] p-4 flex justify-center">
+                  <div className="md:col-span-5 rounded-2xl border border-[#C7D6FE] dark:border-[#2B4C8C] bg-[#E8F0FE] dark:bg-[#13254A] p-4 flex justify-center">
                     <QrCodeDisplay
                       payload={activation.qrPayload}
                       isSandboxSimulation={activation.isSandboxSimulation}
@@ -1142,10 +1292,10 @@ export function BuyEsimPage() {
                     ].map((row) => (
                       <div
                         key={row.label}
-                        className="p-3 rounded-lg border border-[#E5E7EB] dark:border-[#24344D] bg-[#F8FAFC] dark:bg-[#111C2E] flex items-center justify-between gap-2.5"
+                        className="p-3 rounded-xl border border-[#DADCE0] dark:border-[#24344D] bg-[#F8FAFD] dark:bg-[#111C2E] flex items-center justify-between gap-2.5"
                       >
                         <div className="min-w-0">
-                          <p className="text-[11px] font-medium text-[#64748B] dark:text-[#94A3B8]">
+                          <p className="text-[11px] font-medium text-[#5F6368] dark:text-[#94A3B8]">
                             {row.label}
                           </p>
                           <p className="text-xs font-semibold text-[#111827] dark:text-[#F8FAFC] break-all tabular-nums">
@@ -1155,7 +1305,7 @@ export function BuyEsimPage() {
                         <button
                           type="button"
                           onClick={() => copyText(row.label, row.value)}
-                          className="min-h-[40px] inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#E5E7EB] dark:border-[#24344D] bg-white dark:bg-[#162338] text-xs font-semibold cursor-pointer shrink-0"
+                          className="min-h-[40px] inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-[#DADCE0] dark:border-[#24344D] bg-white dark:bg-[#162338] text-xs font-semibold cursor-pointer shrink-0"
                         >
                           <Copy className="h-3.5 w-3.5" />
                           <span>{copiedField === row.label ? 'Copied' : 'Copy'}</span>
@@ -1166,8 +1316,7 @@ export function BuyEsimPage() {
                 </div>
               )}
 
-              {/* Quick Mobile Installation Guide */}
-              <div className="rounded-xl bg-[#F8FAFC] dark:bg-[#111C2E] border border-[#E5E7EB] dark:border-[#24344D] p-3.5 space-y-1.5 text-xs text-[#475569] dark:text-[#CBD5E1]">
+              <div className="rounded-2xl bg-[#F8FAFD] dark:bg-[#111C2E] border border-[#DADCE0] dark:border-[#24344D] p-3.5 space-y-1.5 text-xs text-[#475569] dark:text-[#CBD5E1]">
                 <p className="font-semibold text-[#111827] dark:text-[#F8FAFC]">
                   Quick Install Steps ({selectedOs === 'ios' ? 'Apple iOS' : 'Android'}):
                 </p>
@@ -1188,7 +1337,7 @@ export function BuyEsimPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 <Button
                   size="lg"
-                  className="w-full"
+                  className="w-full rounded-full"
                   leftIcon={<CheckCircle2 className="h-4 w-4" />}
                   onClick={() => navigate('/app/esims')}
                 >
@@ -1197,7 +1346,7 @@ export function BuyEsimPage() {
                 <Button
                   size="lg"
                   variant="secondary"
-                  className="w-full"
+                  className="w-full rounded-full"
                   onClick={() => navigate('/app/orders')}
                 >
                   View Order Receipt

@@ -426,7 +426,7 @@ export function PhoneMarketplaceView({
       </section>
 
       {/* Main Content Container */}
-      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 space-y-3.5">
+      <div className="product-marketplace-container max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 space-y-3.5">
         {activePhone ? (
           /* ------------------------------------------------------------------
            * PRODUCT DETAIL PAGE (PDP)
@@ -743,7 +743,7 @@ export function PhoneMarketplaceView({
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="Search model, code (A3090, SM-S921B), or storage..."
-                    className="w-full h-9 pl-8.5 pr-3 rounded-lg border border-[#D1D5DB] dark:border-[#334866] bg-white dark:bg-[#111C2E] text-xs text-[#111827] dark:text-[#F8FAFC]"
+                    className="w-full h-10 pl-8.5 pr-4 rounded-full border border-[#DADCE0] dark:border-[#334866] bg-white dark:bg-[#111C2E] text-xs text-[#111827] dark:text-[#F8FAFC] focus:outline-none focus:ring-2 focus:ring-[#4285F4]/25 focus:border-[#4285F4]"
                   />
                 </div>
                 <div className="col-span-6 md:col-span-3">
@@ -751,7 +751,7 @@ export function PhoneMarketplaceView({
                     aria-label="Filter by eSIM compatibility"
                     value={compatFilter}
                     onChange={(e) => setCompatFilter(e.target.value as PhoneCompatibilityStatus | 'all')}
-                    className="!min-h-[36px] !py-1.5 text-xs"
+                    className="!min-h-[40px] !py-1.5 text-xs !rounded-full"
                     options={[
                       { value: 'all', label: 'All Compatibility' },
                       { value: 'verified_compatible', label: 'Verified eSIM' },
@@ -765,7 +765,7 @@ export function PhoneMarketplaceView({
                     aria-label="Sort phones"
                     value={sortOrder}
                     onChange={(e) => setSortOrder(e.target.value as SortOrder)}
-                    className="!min-h-[36px] !py-1.5 text-xs"
+                    className="!min-h-[40px] !py-1.5 text-xs !rounded-full"
                     options={[
                       { value: 'featured', label: 'Sort: Featured' },
                       { value: 'price_asc', label: 'Price: Low → High' },
@@ -795,7 +795,7 @@ export function PhoneMarketplaceView({
                   }
                 />
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                   {filteredPhones.map((phone) => (
                     <PhoneCatalogCard
                       key={phone.id}

@@ -6,6 +6,7 @@ import { Alert } from '../../components/ui/Alert';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { Input } from '../../components/ui/Input';
+import { GoogleSignInButton } from '../../components/yegna/GoogleSignInButton';
 
 export function AuthPages({ mode }: { mode: 'login' | 'register' | 'forgot' }) {
   const {
@@ -109,14 +110,7 @@ export function AuthPages({ mode }: { mode: 'login' | 'register' | 'forgot' }) {
 
         {mode !== 'forgot' && (
           <>
-            <Button
-              variant="secondary"
-              className="w-full"
-              loading={busy}
-              onClick={handleGoogle}
-            >
-              Continue with Google
-            </Button>
+            <GoogleSignInButton loading={busy} onClick={handleGoogle} />
 
             <div className="my-5 flex items-center gap-3">
               <div className="flex-1 h-px bg-[#E5E7EB] dark:bg-[#24344D]" />

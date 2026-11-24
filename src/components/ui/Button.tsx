@@ -14,13 +14,13 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 
 const VARIANT_CLASSES: Record<ButtonVariant, string> = {
   primary:
-    'bg-[#0A2DB8] text-white hover:bg-[#082499] dark:bg-[#3B82F6] dark:text-white dark:hover:bg-[#2563EB] focus-visible:ring-2 focus-visible:ring-[#0A2DB8] dark:focus-visible:ring-[#60A5FA] focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-[#0B1220] border border-transparent',
+    'bg-[#1A73E8] text-white hover:bg-[#1557B0] dark:bg-[#3B82F6] dark:text-white dark:hover:bg-[#2563EB] focus-visible:ring-2 focus-visible:ring-[#1A73E8] dark:focus-visible:ring-[#60A5FA] focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-[#0B1220] border border-transparent',
   secondary:
-    'bg-white dark:bg-[#162338] text-[#111827] dark:text-[#F8FAFC] border border-[#E5E7EB] dark:border-[#24344D] hover:bg-[#EEF3FF]/60 dark:hover:bg-[#1C2D45] hover:border-[#0A2DB8]/40 dark:hover:border-[#3B82F6]/60 focus-visible:ring-2 focus-visible:ring-[#0A2DB8] dark:focus-visible:ring-[#60A5FA] focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-[#0B1220]',
+    'bg-white dark:bg-[#162338] text-[#202124] dark:text-[#F8FAFC] border border-[#DADCE0] dark:border-[#24344D] hover:bg-[#F8FAFD] dark:hover:bg-[#1C2D45] hover:border-[#4285F4]/60 dark:hover:border-[#3B82F6]/60 focus-visible:ring-2 focus-visible:ring-[#1A73E8] dark:focus-visible:ring-[#60A5FA] focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-[#0B1220]',
   tertiary:
-    'bg-transparent text-[#0A2DB8] dark:text-[#60A5FA] hover:bg-[#EEF3FF] dark:hover:bg-[#13254A] border border-transparent focus-visible:ring-2 focus-visible:ring-[#0A2DB8] dark:focus-visible:ring-[#60A5FA] focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-[#0B1220]',
+    'bg-transparent text-[#1A73E8] dark:text-[#60A5FA] hover:bg-[#E8F0FE] dark:hover:bg-[#13254A] border border-transparent focus-visible:ring-2 focus-visible:ring-[#1A73E8] dark:focus-visible:ring-[#60A5FA] focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-[#0B1220]',
   destructive:
-    'bg-[#DC2626] text-white hover:bg-[#B91C1C] dark:bg-[#EF4444] dark:text-white dark:hover:bg-[#DC2626] focus-visible:ring-2 focus-visible:ring-[#DC2626] focus-visible:ring-offset-2 border border-transparent',
+    'bg-[#D93025] text-white hover:bg-[#B31412] dark:bg-[#EF4444] dark:text-white dark:hover:bg-[#DC2626] focus-visible:ring-2 focus-visible:ring-[#D93025] focus-visible:ring-offset-2 border border-transparent',
   orange:
     'bg-[#F97316] text-white hover:bg-[#EA580C] dark:bg-[#F97316] dark:text-white dark:hover:bg-[#EA580C] focus-visible:ring-2 focus-visible:ring-[#F97316] focus-visible:ring-offset-2 border border-transparent',
 };

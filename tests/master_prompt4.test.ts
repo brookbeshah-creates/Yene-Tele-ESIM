@@ -902,4 +902,39 @@ test('Vercel serverless handler restores rewritten /api paths and preserves quer
   }
 });
 
+test('Mela assistant endpoint validates input and reports missing GEMINI_API_KEY without faking AI responses', async () => {
+  const prevKey = process.env.GEMINI_API_KEY;
+  delete process.env.GEMINI_API_KEY;
+  const mock = createMockRelationalPgPool();
+  const repo = new PostgresPersistenceRepository(mock.pool);
+  const store = new YeneTeleStore(new Set(['ops@yenetele.example']), crypto.randomBytes(32), {
+    envMode: 'sandbox',
+    persistence: repo,
+  });
+  await store.ensureCatalogSeeded();
+
+  const srv = await startTestHttpServer({ store, envMode: 'sandbox' });
+  try {
+    const noKeyRes = await reqJson(`${srv.baseUrl}/api/v1/mela/ask`, 'POST', undefined, {
+      question: 'Which operators are available?',
+    });
+    assert.equal(noKeyRes.status, 503);
+    assert.equal(noKeyRes.data.error, 'MELA_AI_NOT_CONFIGURED');
+
+    process.env.GEMINI_API_KEY = 'dummy-test-key-for-validation';
+    const emptyQuestion = await reqJson(`${srv.baseUrl}/api/v1/mela/ask`, 'POST', undefined, {
+      question: '   ',
+    });
+    assert.equal(emptyQuestion.status, 400);
+    assert.equal(emptyQuestion.data.error, 'VALIDATION_ERROR');
+  } finally {
+    if (prevKey !== undefined) {
+      process.env.GEMINI_API_KEY = prevKey;
+    } else {
+      delete process.env.GEMINI_API_KEY;
+    }
+    await srv.close();
+  }
+});
+
 

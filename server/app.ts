@@ -15,6 +15,7 @@ import { createRequireAuth } from './modules/auth/authMiddleware.ts';
 import type { TokenVerifier } from './modules/auth/firebaseVerifier.ts';
 import { createCustomerRouter } from './modules/customer/customerRoutes.ts';
 import type { PaymentExpiryScheduler } from './modules/jobs/paymentExpiryJob.ts';
+import { createMelaRouter } from './modules/mela/melaRoutes.ts';
 import { YeneTeleStore } from './modules/store/yeneStore.ts';
 
 export interface ReadinessCheckResult {
@@ -285,6 +286,7 @@ export function createApp(options: CreateAppOptions): {
     res.status(readyInCurrentMode ? 200 : 503).json(payload);
   });
 
+  app.use('/api/v1/mela', sensitiveLimiter, createMelaRouter(store));
   app.use('/api/v1', createCustomerRouter(store, requireAuth));
   app.use('/api/v1/agent', createAgentRouter(store, requireAuth));
   app.use('/api/v1/admin', createAdminRouter(store, requireAuth, options.scheduler));

@@ -87,13 +87,13 @@ export function HomePage() {
         <AnimatedAtmosphere variant="hero" />
 
         <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 pb-16 sm:pt-16 sm:pb-24">
-          <div className="max-w-3xl space-y-6">
-              <p className="text-xs font-semibold uppercase tracking-wider text-[#0A2DB8] dark:text-[#60A5FA]">
+            <div className="max-w-3xl space-y-6">
+              <p className="text-xs font-semibold uppercase tracking-wider text-[#1A73E8] dark:text-[#60A5FA]">
                 Yene Tele · <span lang="am">የእኔ ቴሌኮም</span> · Ethiopia eSIM Platform
               </p>
 
               <h1
-                className="font-bold tracking-tight text-[#111827] dark:text-[#F8FAFC] leading-[1.08]"
+                className="font-bold tracking-tight text-[#202124] dark:text-[#F8FAFC] leading-[1.08]"
                 style={{ fontSize: 'clamp(2.25rem, 4.2vw, 3.6rem)' }}
               >
                 {language === 'am'
@@ -101,7 +101,7 @@ export function HomePage() {
                   : 'Your connection, made simple.'}
               </h1>
 
-              <p className="text-base sm:text-lg text-[#64748B] dark:text-[#CBD5E1] leading-relaxed max-w-xl">
+              <p className="text-base sm:text-lg text-[#5F6368] dark:text-[#CBD5E1] leading-relaxed max-w-xl">
                 {language === 'am'
                   ? 'የኢትዮ ቴሌኮም እና የሳፋሪኮም ኢትዮጵያ eSIM መስመርዎን በየኔ ቴሌ በቀላሉ ይምረጡ፣ ማንነትዎን ያረጋግጡ እና በፍጥነት ይጫኑ።'
                   : 'Discover and purchase your eSIM through Yene Tele. Choose your Ethiopian network, verify device compatibility, reserve your number, and install digitally without visiting a branch.'}
@@ -110,6 +110,7 @@ export function HomePage() {
               <div className="flex flex-wrap items-center gap-3 pt-1">
                 <Button
                   size="lg"
+                  className="rounded-full"
                   rightIcon={<ArrowRight className="h-4 w-4" />}
                   onClick={() => navigate('/buy-esim')}
                 >
@@ -118,6 +119,7 @@ export function HomePage() {
                 <Button
                   variant="secondary"
                   size="lg"
+                  className="rounded-full"
                   onClick={() => navigate('/how-it-works')}
                 >
                   How It Works
@@ -126,6 +128,7 @@ export function HomePage() {
                   <Button
                     variant="tertiary"
                     size="lg"
+                    className="rounded-full"
                     onClick={() => navigate('/app/esims')}
                   >
                     My eSIMs →
@@ -133,17 +136,17 @@ export function HomePage() {
                 )}
               </div>
 
-              <div className="pt-2 flex flex-wrap items-center gap-x-6 gap-y-2 text-xs sm:text-sm text-[#64748B] dark:text-[#CBD5E1]">
+              <div className="pt-2 flex flex-wrap items-center gap-x-6 gap-y-2 text-xs sm:text-sm text-[#5F6368] dark:text-[#CBD5E1]">
                 <span className="inline-flex items-center gap-1.5">
-                  <CheckCircle2 className="h-4 w-4 text-[#0A2DB8] dark:text-[#60A5FA] shrink-0" />
+                  <CheckCircle2 className="h-4 w-4 text-[#1A73E8] dark:text-[#60A5FA] shrink-0" />
                   Ethio telecom &amp; Safaricom Ethiopia
                 </span>
                 <span className="inline-flex items-center gap-1.5">
-                  <CheckCircle2 className="h-4 w-4 text-[#0A2DB8] dark:text-[#60A5FA] shrink-0" />
+                  <CheckCircle2 className="h-4 w-4 text-[#34A853] dark:text-[#4ADE80] shrink-0" />
                   Fayda KYC Consent Boundary
                 </span>
                 <span className="inline-flex items-center gap-1.5">
-                  <CheckCircle2 className="h-4 w-4 text-[#0A2DB8] dark:text-[#60A5FA] shrink-0" />
+                  <CheckCircle2 className="h-4 w-4 text-[#1A73E8] dark:text-[#60A5FA] shrink-0" />
                   Encrypted QR &amp; LPA Vault
                 </span>
               </div>
@@ -152,10 +155,10 @@ export function HomePage() {
       </section>
 
       {/* SECTION 1: CHOOSE YOUR OPERATOR */}
-      <section className="py-14 sm:py-16 px-4 sm:px-6 lg:px-8 bg-[#F8FAFC] dark:bg-[#111C2E] border-b border-[#E5E7EB] dark:border-[#24344D]">
+      <section className="py-14 sm:py-16 px-4 sm:px-6 lg:px-8 bg-[#F8FAFD] dark:bg-[#111C2E] border-b border-[#DADCE0] dark:border-[#24344D]">
         <div className="max-w-3xl mx-auto space-y-6 text-center">
           <div>
-            <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-[#111827] dark:text-[#F8FAFC]">
+            <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-[#202124] dark:text-[#F8FAFC]">
               {language === 'am' ? 'ኦፕሬተርዎን ይምረጡ' : 'Choose your Operator'}
             </h2>
           </div>
@@ -165,18 +168,18 @@ export function HomePage() {
       </section>
 
       {/* SECTION 2: HOW eSIM WORKS */}
-      <section className="py-16 sm:py-20 px-4 sm:px-6 lg:px-8 bg-white dark:bg-[#0B1220] border-b border-[#E5E7EB] dark:border-[#24344D]">
+      <section className="py-16 sm:py-20 px-4 sm:px-6 lg:px-8 bg-white dark:bg-[#0B1220] border-b border-[#DADCE0] dark:border-[#24344D]">
         <div className="max-w-7xl mx-auto">
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-10">
             <div className="max-w-2xl">
-              <p className="text-xs font-semibold uppercase tracking-wider text-[#0A2DB8] dark:text-[#60A5FA]">
+              <p className="text-xs font-semibold uppercase tracking-wider text-[#1A73E8] dark:text-[#60A5FA]">
                 How eSIM Works
               </p>
-              <h2 className="mt-1.5 text-2xl sm:text-3xl font-bold tracking-tight text-[#111827] dark:text-[#F8FAFC]">
+              <h2 className="mt-1.5 text-2xl sm:text-3xl font-bold tracking-tight text-[#202124] dark:text-[#F8FAFC]">
                 Six structured safeguards from selection to activation.
               </h2>
             </div>
-            <Button variant="secondary" onClick={() => navigate('/how-it-works')}>
+            <Button variant="secondary" className="rounded-full" onClick={() => navigate('/how-it-works')}>
               Full Step-by-Step Guide
             </Button>
           </div>
@@ -196,33 +199,33 @@ export function HomePage() {
       </section>
 
       {/* SECTION 3: DEVICE COMPATIBILITY & TRUST */}
-      <section className="py-16 sm:py-20 px-4 sm:px-6 lg:px-8 bg-[#F8FAFC] dark:bg-[#111C2E] border-b border-[#E5E7EB] dark:border-[#24344D]">
+      <section className="py-16 sm:py-20 px-4 sm:px-6 lg:px-8 bg-[#F8FAFD] dark:bg-[#111C2E] border-b border-[#DADCE0] dark:border-[#24344D]">
         <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           <div className="lg:col-span-6 space-y-5">
-            <p className="text-xs font-semibold uppercase tracking-wider text-[#0A2DB8] dark:text-[#60A5FA]">
+            <p className="text-xs font-semibold uppercase tracking-wider text-[#1A73E8] dark:text-[#60A5FA]">
               Device Compatibility Check
             </p>
-            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#111827] dark:text-[#F8FAFC]">
+            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#202124] dark:text-[#F8FAFC]">
               Confirm your device supports eSIM before paying.
             </h2>
-            <p className="text-sm sm:text-base text-[#64748B] dark:text-[#CBD5E1] leading-relaxed">
+            <p className="text-sm sm:text-base text-[#5F6368] dark:text-[#CBD5E1] leading-relaxed">
               Every smartphone sold across markets behaves differently. Always verify your phone is
               carrier-unlocked and displays a 32-digit EID when you dial{' '}
-              <strong className="text-[#111827] dark:text-[#F8FAFC] tabular-nums">*#06#</strong>.
+              <strong className="text-[#202124] dark:text-[#F8FAFC] tabular-nums">*#06#</strong>.
             </p>
 
             <Card padding="sm" variant="highlight" className="space-y-2">
-              <p className="text-xs font-semibold text-[#0A2DB8] dark:text-[#60A5FA] inline-flex items-center gap-1.5">
+              <p className="text-xs font-semibold text-[#1A73E8] dark:text-[#60A5FA] inline-flex items-center gap-1.5">
                 <PhoneCall className="h-3.5 w-3.5" />
                 Quick 5-Second Check
               </p>
-              <p className="text-sm text-[#111827] dark:text-[#F8FAFC]">
+              <p className="text-sm text-[#202124] dark:text-[#F8FAFC]">
                 Open your phone dialer → enter <strong className="tabular-nums">*#06#</strong> →
                 confirm an <strong>EID</strong> barcode/number is shown.
               </p>
             </Card>
 
-            <Button onClick={() => navigate('/supported-devices')}>
+            <Button className="rounded-full" onClick={() => navigate('/supported-devices')}>
               Check Supported Devices Directory
             </Button>
           </div>

@@ -26,17 +26,17 @@ const PADDING_MAP = {
 
 const VARIANT_CLASSES: Record<CardVariant, string> = {
   default:
-    'bg-white dark:bg-[#162338] border border-[#E5E7EB] dark:border-[#24344D] shadow-[var(--yegna-shadow-card)]',
+    'bg-white dark:bg-[#162338] border border-[#DADCE0] dark:border-[#24344D] shadow-[var(--yegna-shadow-card)]',
   subtle:
-    'bg-[#F8FAFC] dark:bg-[#111C2E] border border-[#E5E7EB] dark:border-[#24344D]',
+    'bg-[#F8FAFD] dark:bg-[#111C2E] border border-[#DADCE0] dark:border-[#24344D]',
   interactive:
-    'bg-white dark:bg-[#162338] border border-[#E5E7EB] dark:border-[#24344D] hover:border-[#0A2DB8]/65 dark:hover:border-[#3B82F6]/70 hover:bg-[#EEF3FF]/45 dark:hover:bg-[#1C2D45] transition-colors duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0A2DB8] dark:focus-visible:ring-[#60A5FA]',
+    'bg-white dark:bg-[#162338] border border-[#DADCE0] dark:border-[#24344D] shadow-[var(--yegna-shadow-card)] hover:border-[#4285F4]/70 dark:hover:border-[#60A5FA]/70 hover:shadow-[var(--yegna-shadow-elevated)] hover:bg-[#F8FAFD] dark:hover:bg-[#1C2D45] transition-all duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1A73E8] dark:focus-visible:ring-[#60A5FA]',
   selected:
-    'bg-[#EEF3FF] dark:bg-[#13254A] border-2 border-[#0A2DB8] dark:border-[#3B82F6] shadow-[var(--yegna-shadow-card)] transition-colors duration-150',
+    'bg-[#E8F0FE]/70 dark:bg-[#13254A] border-2 border-[#1A73E8] dark:border-[#3B82F6] shadow-[var(--yegna-shadow-card)] transition-colors duration-150',
   disabled:
-    'bg-[#F8FAFC] dark:bg-[#111C2E]/70 border border-[#E5E7EB] dark:border-[#24344D]/60 opacity-60 cursor-not-allowed',
+    'bg-[#F8FAFD] dark:bg-[#111C2E]/70 border border-[#DADCE0] dark:border-[#24344D]/60 opacity-60 cursor-not-allowed',
   highlight:
-    'bg-[#EEF3FF] dark:bg-[#13254A] border border-[#C7D6FE] dark:border-[#2B4C8C] shadow-[var(--yegna-shadow-card)]',
+    'bg-[#E8F0FE]/65 dark:bg-[#13254A] border border-[#D2E3FC] dark:border-[#2B4C8C] shadow-[var(--yegna-shadow-card)]',
 };
 
 export function Card({
@@ -48,7 +48,7 @@ export function Card({
   disabled = false,
 }: CardProps) {
   const effectiveVariant: CardVariant = disabled ? 'disabled' : variant;
-  const classes = `rounded-xl ${VARIANT_CLASSES[effectiveVariant]} ${PADDING_MAP[padding]} ${className}`;
+  const classes = `rounded-2xl ${VARIANT_CLASSES[effectiveVariant]} ${PADDING_MAP[padding]} ${className}`;
 
   if (onClick && !disabled) {
     return (

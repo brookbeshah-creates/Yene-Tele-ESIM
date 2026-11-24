@@ -158,13 +158,22 @@ export function PublicLayout({ children }: { children: React.ReactNode }) {
             </div>
             <div className="pt-3 border-t border-white/15 flex flex-col gap-2">
               {firebaseUser ? (
-                <Button
-                  variant="secondary"
-                  className="!bg-white !text-[#0A2DB8] !border-transparent"
-                  onClick={() => handleNav('/app')}
-                >
-                  {t.nav.customerPortal}
-                </Button>
+                <>
+                  <Button
+                    variant="secondary"
+                    className="!bg-white/15 !text-white !border-white/25 hover:!bg-white/25"
+                    onClick={() => handleNav('/app')}
+                  >
+                    {t.nav.customerPortal}
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    className="!bg-white !text-[#0A2DB8] hover:!bg-[#EEF3FF] !border-transparent"
+                    onClick={() => handleNav('/buy-esim')}
+                  >
+                    {t.nav.buyEsim}
+                  </Button>
+                </>
               ) : (
                 <>
                   <Button
