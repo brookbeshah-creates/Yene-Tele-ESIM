@@ -1,0 +1,6 @@
+{
+  "name": "Yene Tele",
+  "description": "Yene Tele (የእኔ ቴሌኮም) — Ethiopia-focused eSIM-first telecommunications reseller and management platform.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

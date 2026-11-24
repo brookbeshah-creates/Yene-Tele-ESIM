@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Yene Tele (የእኔ ቴሌኮም) — Digital eSIM Platform</title>
+    <meta
+      name="description"
+      content="Yene Tele (የእኔ ቴሌኮም) — Ethiopia-focused digital eSIM sales, operator provisioning, and eSIM management platform."
+    />
+    <meta property="og:title" content="Yene Tele (የእኔ ቴሌኮም)" />
+    <meta
+      property="og:description"
+      content="Discover, purchase, and manage Ethiopian eSIMs cleanly through Yene Tele."
+    />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="icon" type="image/png" href="/assets/aistudio/image_20c4631a.png" />
+    <link rel="apple-touch-icon" href="/assets/aistudio/image_20c4631a.png" />
+    <script>
+      (function () {
+        try {
+          var pref = localStorage.getItem('yegna_theme') || 'system';
+          var prefersDark =
+            window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+          var isDark = pref === 'dark' || (pref === 'system' && prefersDark);
+          var root = document.documentElement;
+          if (isDark) {
+            root.classList.add('dark');
+            root.style.colorScheme = 'dark';
+          } else {
+            root.classList.remove('dark');
+            root.style.colorScheme = 'light';
+          }
+          root.dataset.themePreference = pref;
+        } catch (e) {}
+      })();
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Noto+Sans+Ethiopic:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body class="bg-white text-[#111827] dark:bg-[#0B1220] dark:text-[#F8FAFC] antialiased transition-colors duration-150">
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

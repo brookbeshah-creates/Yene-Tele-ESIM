@@ -1,0 +1,149 @@
+@import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ============================================================================
+   YEGNA TELECOM DESIGN SYSTEM TOKENS (ROYAL BLUE + WHITE + DEEP NAVY DARK)
+   Primary Royal Blue: #0A2DB8 | Secondary Blue: #619ED8 | Tint: #EEF3FF
+   Dominant Light Surface: #FFFFFF | Orange Accent: #F97316 (sparingly)
+   Fonts: Plus Jakarta Sans + DM Sans + Noto Sans Ethiopic
+   ============================================================================ */
+
+:root {
+  /* Core Surfaces */
+  --yegna-bg-canvas: #FFFFFF;
+  --yegna-bg-secondary: #F8FAFC;
+  --yegna-bg-card: #FFFFFF;
+  --yegna-bg-elevated: #F1F5F9;
+  --yegna-bg-blue-tint: #EEF3FF;
+  --yegna-bg-blue-soft: #DCE7FF;
+  --yegna-bg-orange-tint: #FFF7ED;
+  --yegna-bg-orange-soft: #FFEDD5;
+
+  /* Borders & Hairlines */
+  --yegna-border: #E5E7EB;
+  --yegna-border-strong: #D1D5DB;
+  --yegna-border-blue: #C7D6FE;
+  --yegna-border-orange: #FED7AA;
+
+  /* Brand & Accents */
+  --yegna-blue: #0A2DB8;
+  --yegna-blue-hover: #082499;
+  --yegna-blue-dark: #071D7A;
+  --yegna-blue-secondary: #619ED8;
+  --yegna-orange: #F97316;
+  --yegna-orange-text: #C2410C;
+  --yegna-admin-navy: #081A5C;
+
+  /* Typography */
+  --yegna-text-primary: #111827;
+  --yegna-text-secondary: #64748B;
+  --yegna-text-muted: #64748B;
+
+  /* Radius & Elevation */
+  --yegna-radius-sm: 0.5rem;
+  --yegna-radius-md: 0.75rem;
+  --yegna-radius-lg: 1rem;
+  --yegna-shadow-card: 0 1px 2px 0 rgb(17 24 39 / 0.04);
+  --yegna-shadow-elevated: 0 14px 32px -12px rgb(10 45 184 / 0.14);
+}
+
+.dark {
+  /* Deliberate Deep Navy Dark Palette (Never washed out, never pure black) */
+  --yegna-bg-canvas: #0B1220;
+  --yegna-bg-secondary: #111C2E;
+  --yegna-bg-card: #162338;
+  --yegna-bg-elevated: #1D2F4B;
+  --yegna-bg-blue-tint: #13254A;
+  --yegna-bg-blue-soft: #1B356B;
+  --yegna-bg-orange-tint: #2B1A12;
+  --yegna-bg-orange-soft: #3D2316;
+
+  /* Borders & Hairlines */
+  --yegna-border: #24344D;
+  --yegna-border-strong: #334866;
+  --yegna-border-blue: #2B4C8C;
+  --yegna-border-orange: #7C3D1F;
+
+  /* Brand & Accents */
+  --yegna-blue: #3B82F6;
+  --yegna-blue-hover: #2563EB;
+  --yegna-blue-dark: #93C5FD;
+  --yegna-blue-secondary: #619ED8;
+  --yegna-orange: #FB923C;
+  --yegna-orange-text: #FDBA74;
+  --yegna-admin-navy: #070E24;
+
+  /* Typography */
+  --yegna-text-primary: #F8FAFC;
+  --yegna-text-secondary: #CBD5E1;
+  --yegna-text-muted: #94A3B8;
+
+  /* Elevation */
+  --yegna-shadow-card: 0 1px 2px 0 rgb(0 0 0 / 0.3);
+  --yegna-shadow-elevated: 0 18px 36px -12px rgb(0 0 0 / 0.55);
+}
+
+@layer base {
+  html {
+    font-family: "Plus Jakarta Sans", "DM Sans", "Noto Sans Ethiopic", system-ui, -apple-system, "Segoe UI", sans-serif;
+    color: var(--yegna-text-primary);
+    background-color: var(--yegna-bg-canvas);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .dark body {
+    letter-spacing: 0.005em;
+  }
+
+  h1, h2, h3, h4 {
+    font-family: "Plus Jakarta Sans", "Noto Sans Ethiopic", system-ui, sans-serif;
+    text-wrap: balance;
+  }
+
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* Antigravity-inspired lightweight compositor-only atmospheric drift */
+@keyframes yegna-orb-drift {
+  0%, 100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(24px, -18px, 0) scale(1.06);
+  }
+}
+
+@keyframes yegna-orb-drift-reverse {
+  0%, 100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(-26px, 20px, 0) scale(1.05);
+  }
+}
+
+.yegna-animate-orb {
+  animation: yegna-orb-drift 18s ease-in-out infinite;
+  will-change: transform;
+}
+
+.yegna-animate-orb-reverse {
+  animation: yegna-orb-drift-reverse 22s ease-in-out infinite;
+  will-change: transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .yegna-animate-orb,
+  .yegna-animate-orb-reverse {
+    animation: none !important;
+    transform: none !important;
+  }
+
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
